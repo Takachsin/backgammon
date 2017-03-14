@@ -20,9 +20,9 @@ def calc_pip_count():
     opponent_pip = 0
     board = gnubg.board()
     opponent_board, player_board = board
-    for x in xrange (0,24):
+    for x in range (0,24):
         player_pip = player_pip + player_board[x] * (x+1)
-    for x in xrange (0,24):
+    for x in range (0,24):
         opponent_pip = opponent_pip + opponent_board[x] * (x+1)
     if player_pip > opponent_pip:
         reward = 1 * doubling_cube_value
@@ -53,7 +53,7 @@ def determine_bearing_off():
 def determine_winner_1():
     match = gnubg.match()
     match_info = match['games']
-    return match_info[0]['info']['winner'];
+    return match_info[-1]['info']['winner'];
 
 # Decides whether to double
 def decide_on_double():
@@ -96,7 +96,6 @@ def calc_winning_prob_1(player_pip, opponent_pip):
     print(pip_diff)
     if player_pip > opponent_pip and pip_diff < 24:
         prob = prob_of_rolling(pip_diff)
-
     return prob;
 
 def lead_player_has(player_pip, opponent_pip):
@@ -121,16 +120,10 @@ reward = 0
 state = 0
 doubling_cube_values = [1, 2, 4, 8, 16, 32, 64]
 
-#print(prob_of_rolling(2))
-
-# Testing
-#cubeinfo = gnubg.posinfo()
-#cube_owner = cubeinfo['dice'][0]
-#pprint(cube_owner)
-#print(type(cubeinfo))
-
-#s: turn until game ends
-#a: double, don't double, accept double, reject double
+# Check score from last game to determine if a game has completed
+match = gnubg.match()
+past_player_score = match['games'][-1]['info']['score-X']
+past_opponent_score = match['games'][-1]['info']['score-O']
 
 while True:
     posinfo = gnubg.posinfo()
@@ -139,12 +132,18 @@ while True:
     player_pip, opponent_pip, reward = calc_pip_count()
     total_reward += reward
 
-    #cubeinfo = gnubg.match()
-    #cube_owner = cubeinfo["games"]
-    #cubes = cube_owner[0]['game'] #action, dice, player
-    #cubey = cubes[0]['action']
-    #cubes = cube_owner[0]['info']['score-O'] #score-O, score-X, winner
-    #pprint(cubey)
+    match = gnubg.match()
+    player_score = match['games'][-1]['info']['score-X']
+    opponent_score = match['games'][-1]['info']['score-O']
+    # Breaks the loop when a winner has been determined
+    if player_score != past_player_score or opponent_score != past_opponent_score:
+        winner = match['games'][-1]['info']['winner']
+        if player_score > past_player_score:
+            player_has_won = True
+        if opponent_score > past_opponent_score:
+            player_has_won = False
+        print("Game Completed!")
+        break;
 
     # Decides whether to accept the oppoent's double
     opponent_doubled = posinfo['doubled']
@@ -155,15 +154,9 @@ while True:
             gnubg.command('accept')
         else:
             print("Player rejects double, and loses match.")
-            player_wins_game = False
+            player_has_won = False
             gnubg.command('reject')
             break;
-
-    # Breaks the loop when a winner has been determined
-    player_count, opponent_count = determine_winner()
-    if player_count or opponent_count:
-        print("Game Completed!")
-        break;
 
     # Accepts the resignation when the opponent offers to resign
     opponent_resigns = posinfo['resigned']
@@ -177,12 +170,9 @@ while True:
     opponent_has_cube = cubeinfo['cubeowner'] == 1
 
     # Calculate probability of winning
-    #lead = lead_player_has(player_pip, opponent_pip)
-    #print(lead)
-    #print(player_pip)
-    #print(opponent_pip)
-    #prob_of_win = calc_winning_prob_1(player_pip, opponent_pip)
-    #print(prob_of_win)
+
+
+    players_turn = posinfo['turn']
 
     # Decides whether player should double before rolling
     double = decide_on_double()
@@ -190,26 +180,33 @@ while True:
         total_reward += reward
         #gnubg.command('double')
 
-    players_turn = posinfo['turn']
     # Checks to make sure the player has not rolled yet
-    die_1 = posinfo['dice'][0]
-    die_2 = posinfo['dice'][1]
+    die_1, die_2 = posinfo['dice']
     if die_1 == 0 and die_2 == 0:
         gnubg.command('roll')
 
     # Checks if a move is possible
-    die_1 = posinfo['dice'][0]
-    die_2 = posinfo['dice'][1]
+    die_1, die_2 = posinfo['dice']
     if players_turn and die_1 > 0 and die_2 > 0:
         gnubg.command('move ' + gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()), gnubg.board()))
         #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
-    state += 1
 
 doubling_cube_value = find_doubling_cube_value()
+#winner = match['games'][-2]['info']['winner']
+#winner1 = match['games'][-1]['info']['winner']
+#winner2 = match['games'][0]['info']['winner']
+#winner3 = match['games'][1]['info']['winner']
+pprint(winner)
+games = match['games']
+for x in range(len(games)):
+    winner = match['games'][x]['info']['winner']
+    pprint(winner)
 
-if True:#player_wins_game:
+if player_has_won:
+    print("Player has won the game!")
     reward = 1 * (doubling_cube_value + 1000)
 else:
+    print("Opponent has won the game!")
     reward = -1 * (doubling_cube_value + 1000)
 
 total_reward += reward
