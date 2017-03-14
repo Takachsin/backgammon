@@ -5,7 +5,7 @@ from pprint import pprint
 
 # set constant rates
 learning_rate = 0.5
-discount_factor = 0
+discount_factor = 0.5
 
 # Pulls the doubling cube information from GNUBG
 def find_doubling_cube_value():
@@ -32,13 +32,24 @@ def calc_pip_count():
         reward = 0
     return player_pip, opponent_pip, reward;
 
+# Determines winner by checking if any chips are left on the board
 def determine_winner():
     board = gnubg.board()
     opponent_board, player_board = board
-    player_count = all(player_board == 0 for item in board)
-    opponent_count = all(opponent_board == 0 for item in board)
+    player_count = all(item == 0 for item in player_board)
+    opponent_count = all(item == 0 for item in opponent_board)
     return player_count, opponent_count;
 
+# Determines if a player is bearing off based on the chip positions
+def determine_bearing_off():
+    board = gnubg.board()
+    opponent_board, player_board = board
+    # uses [6:] to skip checking the checkers in the bearing off zone
+    player_bearing_off = all(item == 0 for item in player_board[6:])
+    opponent_bearing_off = all(item == 0 for item in opponent_board[6:])
+    return player_bearing_off, opponent_bearing_off;
+
+# Determines winner based on winner name
 def determine_winner_1():
     match = gnubg.match()
     match_info = match['games']
@@ -72,6 +83,25 @@ def prob_of_rolling(num):
                 combinations += 1
     prob = combinations / float(total_combinations)
     return prob;
+
+def calc_winning_prob(player_pip, opponent_pip):
+    prob = 0
+    #for sum in range(3,24):
+        #prob_of_rolling()
+    return;
+
+def calc_winning_prob_1(player_pip, opponent_pip):
+    pip_diff = abs(player_pip - opponent_pip)
+    prob = 0
+    print(pip_diff)
+    if player_pip > opponent_pip and pip_diff < 24:
+        prob = prob_of_rolling(pip_diff)
+
+    return prob;
+
+def lead_player_has(player_pip, opponent_pip):
+    lead = (player_pip - opponent_pip) / float(player_pip)
+    return lead;
 
 def calc_Q(state, action, reward, next_state, next_action):
     #q = q + learning_rate * (reward + discount_factor * (max q_next_state - q)
@@ -146,23 +176,34 @@ while True:
     # Cubeowner = 1 if opponent, -1 if no one, 0 if player
     opponent_has_cube = cubeinfo['cubeowner'] == 1
 
+    # Calculate probability of winning
+    #lead = lead_player_has(player_pip, opponent_pip)
+    #print(lead)
+    #print(player_pip)
+    #print(opponent_pip)
+    #prob_of_win = calc_winning_prob_1(player_pip, opponent_pip)
+    #print(prob_of_win)
+
     # Decides whether player should double before rolling
     double = decide_on_double()
     if double and not opponent_has_cube:
         total_reward += reward
         #gnubg.command('double')
 
-    gnubg.command('roll')
+    players_turn = posinfo['turn']
+    # Checks to make sure the player has not rolled yet
     die_1 = posinfo['dice'][0]
     die_2 = posinfo['dice'][1]
+    if die_1 == 0 and die_2 == 0:
+        gnubg.command('roll')
 
-    # Commands an optimal move if a move is possible
-    players_turn = posinfo['turn']
+    # Checks if a move is possible
+    die_1 = posinfo['dice'][0]
+    die_2 = posinfo['dice'][1]
     if players_turn and die_1 > 0 and die_2 > 0:
         gnubg.command('move ' + gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()), gnubg.board()))
         #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
     state += 1
-
 
 doubling_cube_value = find_doubling_cube_value()
 
