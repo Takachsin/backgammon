@@ -1,4 +1,50 @@
 from pprint import pprint
+import socket
+import json
+import time
+
+# Setup to transfer data between the backgammon client and python server
+# Credit to Ben Smith
+def Train_NN(xs, ys):
+    "Train the NN"
+    return
+
+def Query_NN(xs):
+    "Call the NN to determine an action"
+    response = Client_Send(xs)
+    return response['RsSuccess']
+
+def Client_Send(data):
+    "Send Data to NN Server"
+    TCP_IP = '127.0.0.1'
+    TCP_PORT = 50005
+    BUFFER_SIZE = 1024
+    try:
+        # Convert the Dictionary "Data" into a string
+        strRequest = json.dumps(data)
+
+        # Convert the json string into Bytes
+        request = strRequest.encode()
+        try:
+            # Connect to the Socket and send the request
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((TCP_IP, TCP_PORT))
+            s.send(request)
+
+            # Wait for the response from the Server
+            rs = s.recv(BUFFER_SIZE)
+        finally:
+            s.close()
+
+        # if the response isn't null, write it out and return the dictionary
+        # form of the response
+        if rs != None:
+            strResponse = rs.decode()
+            print("I received: " + strResponse)
+            response = json.loads(strResponse)
+            return response
+    except Exception as ex:
+        print(ex)
 
 # ************Set Parameters*******************
 learning_rate = 0.5
