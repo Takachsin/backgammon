@@ -10,7 +10,7 @@ doubling_cube_values = [1, 2, 4, 8, 16, 32, 64]
 
 # Calculate the number of spaces remaining to bear off all checkers
 def calc_pip_count():
-    doubling_cube_value = find_doubling_cube_value()
+    doubling_cube_value = cubeinfo["cube"]
     player_pip = 0
     opponent_pip = 0
     board = gnubg.board()
@@ -136,7 +136,7 @@ while True:
     opponent_resigns = posinfo['resigned']
     if opponent_resigns:
         print("Opponent resigns!")
-        player_wins_game = True
+        player_has_won = True
         gnubg.command('accept')
         break;
 
