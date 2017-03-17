@@ -47,8 +47,8 @@ def Client_Send(data):
         print(ex)
 
 # ************Set Parameters*******************
-learning_rate = 0.5
-discount_factor = 0.5
+learning_rate = 0.85
+discount_factor = 0.99
 doubling_cube_values = [1, 2, 4, 8, 16, 32, 64]
 epochs = 1
 matchto = 7
@@ -71,11 +71,34 @@ def calc_reward():
     player_pip, opponent_pip = calc_pip_count()
     doubling_cube_value = cubeinfo["cube"]
     if player_pip > opponent_pip:
-        reward = 1 * doubling_cube_value
+        reward = doubling_cube_value
     elif player_pip < opponent_pip:
         reward = -1 * doubling_cube_value
     else:
         reward = 0
+    return reward
+
+def calc_max_reward(opponent_has_cube):
+    player_pip, opponent_pip = calc_pip_count()
+    doubling_cube_value = cubeinfo["cube"]
+
+    if player_pip > opponent_pip:
+        current_reward = doubling_cube_value
+    elif player_pip < opponent_pip:
+        current_reward = -1 * doubling_cube_value
+    else:
+        current_reward = 0
+
+    if not opponent_has_cube:
+        next_reward = current_reward * 2
+    else:
+        next_reward = current_reward
+
+    if next_reward > current_reward:
+        max_reward = next_reward
+    else:
+        max_reward = current_reward
+
     return reward
 
 # Determines if a player is bearing off based on the chip positions
@@ -108,7 +131,7 @@ def decide_on_double():
         double = False
     return double
 
-# Defines the probability of rolling a specific number
+# Determines the probability of rolling a specific number
 def prob_of_rolling(num):
     total_combinations = 36
     prob = 0.00
@@ -126,14 +149,17 @@ def prob_of_rolling(num):
     prob = combinations / float(total_combinations)
     return prob
 
-def calc_Q(state, action, reward, next_state, next_action):
-    #q = q + learning_rate * (reward + discount_factor * (max q_next_state - q)
-    return
+def calc_Q(Q_value, next_Q_value, reward):
+    new_Q_value = Q_value + learning_rate * (reward + discount_factor * next_Q_value - Q_value)
+    return new_Q_value
 
 # decides whether to double or not based on policy derived from Q
-def decide_action(state):
-    # choose double based on policy derived from Q
+def decide_action(reward):
+    double = reward > 0
     return double
+
+matches_won = 0
+Q_value = 0
 
 for x in xrange(0, epochs):
     # Start the game
@@ -142,8 +168,6 @@ for x in xrange(0, epochs):
 
     # initialize values
     total_reward = 0
-    reward = 0
-    state = 0
 
     while True:
         # Breaks the loop when a winner has been determined
@@ -154,16 +178,16 @@ for x in xrange(0, epochs):
 
         posinfo = gnubg.posinfo()
         cubeinfo = gnubg.cubeinfo()
+        board = gnubg.board()
         match = gnubg.match()
 
-        player_score = match['games'][-1]['info']['score-O']
-        opponent_score = match['games'][-1]['info']['score-X']
+        #player_score = match['games'][-1]['info']['score-O']
+        #opponent_score = match['games'][-1]['info']['score-X']
         opponent_doubled = posinfo['doubled']
         opponent_resigns = posinfo['resigned']
         opponent_has_cube = cubeinfo['cubeowner'] == 0
         die_1, die_2 = posinfo['dice']
-        player_pip, opponent_pip = calc_pip_count()
-        total_reward += reward
+        reward = calc_reward()
 
         # Decides whether to accept the oppoent's double
         if opponent_doubled:
@@ -173,37 +197,44 @@ for x in xrange(0, epochs):
                 gnubg.command('accept')
             else:
                 if verbose: print("Player rejects double, and loses match.")
+                player_has_won = False
+                opponent_has_won = True
                 gnubg.command('reject')
                 break
         # Accepts the resignation when the opponent offers to resign
         elif opponent_resigns:
             if verbose: print("Opponent resigns!")
+            player_has_won = True
+            opponent_has_won = False
             gnubg.command('accept')
             break
         # Checks to make sure the player has not rolled yet
         elif die_1 == 0 and die_2 == 0:
             # Decides whether player should double before rolling
-            double = decide_on_double()
-            if double and not opponent_has_cube:
-                total_reward += reward
-                gnubg.command('double')
+            if not opponent_has_cube:
+                double = decide_action(reward)
+                if double:
+                    gnubg.command('double')
             gnubg.command('roll')
         else:
             gnubg.command('move ' + gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()), gnubg.board()))
-
-        # Checks if a move is possible
-        #die_1, die_2 = posinfo['dice']
-        #if players_turn and die_1 > 0 and die_2 > 0:
-
             #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
-        doubling_cube_value = cubeinfo["cube"]
 
+        print(Q_value)
+
+        reward = calc_reward()
+        next_Q_value = calc_max_reward(opponent_has_cube)
+        Q_value = calc_Q(Q_value, next_Q_value, reward)
+
+        print(Q_value)
+
+    doubling_cube_value = cubeinfo["cube"]
     if player_has_won:
         if verbose: print("Player has won the game!")
+        matches_won += 1
         reward = 1 * (doubling_cube_value + 1000)
     else:
         if verbose: print("Opponent has won the game!")
         reward = -1 * (doubling_cube_value + 1000)
 
-total_reward += reward
-print(total_reward)
+print("Player won " + str(matches_won) + " of " + str(epochs) + " matches")
