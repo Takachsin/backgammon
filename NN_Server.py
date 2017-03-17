@@ -1,6 +1,8 @@
 import tensorflow as tf
 import socket
 import json
+import numpy as np
+import matplotlib.pyplot as plt
 
 # vvv - Socket Magic -------------
 TCP_IP = '127.0.0.1'
@@ -32,6 +34,17 @@ while 1:
         # payload of a Dict with all your inputs. Run this request through the NN
         # and then formulate a response based on your NN's findings.
 
+        # action are double or don't double
+        # states are iterations
+        '''States can be the two pip counts plus which entries on the bar have
+         two or more, exactly one, or zero of each color.
+         That should reduce the state space somewhat but still capture key info.'''
+         player_pip_max = 375
+         opponent_pip_max = 375
+         Q = np.zeros([player_pip_max, 2])
+         #Q[s, a] = Q[s,a] + learning_rate * (reward + discount_factor * np.max(Q[s1,:]) - Q[s,a])
+
+
         # Example response
             rs = {'RsSuccess': True, 'Payload': 1}
         else:
@@ -57,9 +70,9 @@ while 1:
 #variables2=json.loads(s)
 
 ##import tensorflow as tf
-##hello = tf.constant('Hello, TensorFlow!')
-##sess = tf.Session()
-##print(sess.run(hello))
+hello = tf.constant('Hello, TensorFlow!')
+sess = tf.Session()
+print(sess.run(hello))
 
 #x = tf.placeholder(tf.float32, [None, 784])
 #W = tf.Variable(tf.zeros([784, 10]))
