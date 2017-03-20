@@ -67,6 +67,25 @@ def calc_pip_count():
         opponent_pip = opponent_pip + opponent_board[x] * (x+1)
     return player_pip, opponent_pip
 
+# Finds a restricted count of how many checkers each player has on the bar
+def calc_checkers_on_bar():
+    board = gnubg.board()
+    opponent_board, player_board = board
+    player_checkers_on_bar = player_board[24]
+    opponent_checkers_on_bar = opponent_board[24]
+
+    if player_checkers_on_bar >= 2:
+        player_bar_count = 2
+    else:
+        player_bar_count = player_checkers_on_bar
+
+    if opponent_checkers_on_bar >= 2:
+        opponent_bar_count = 2
+    else:
+        opponent_bar_count = opponent_checkers_on_bar
+
+    return player_bar_count, opponent_bar_count
+
 # Determines if a player is bearing off based on the chip positions
 def determine_if_game_has_ended():
     board = gnubg.board()
@@ -128,7 +147,6 @@ for x in xrange(0, epochs):
         opponent_resigns = posinfo['resigned']
         opponent_has_cube = cubeinfo['cubeowner'] == 0
         die_1, die_2 = posinfo['dice']
-        reward = calc_reward()
 
         # Decides whether to accept the oppoent's double
         if opponent_doubled:
@@ -162,8 +180,11 @@ for x in xrange(0, epochs):
             #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
 
         player_pip, opponent_pip = calc_pip_count()
+        player_bar_count, opponent_bar_count = calc_checkers_on_bar()
         NN_dict['player_pip'] = player_pip
         NN_dict['opponent_pip'] = opponent_pip
+        NN_dict['player_bar_count'] = player_bar_count
+        NN_dict['opponent_bar_count'] = opponent_bar_count
         NN_dict['doubling_cube_value'] = cubeinfo['cube']
         Query_NN(NN_dict)
 
