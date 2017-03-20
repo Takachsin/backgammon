@@ -120,7 +120,6 @@ for x in xrange(0, epochs):
     gnubg.command('new match ' + str(matchto))
 
     # initialize values
-    total_reward = 0
     pWins = False
     oWins = False
     NNdict = {}

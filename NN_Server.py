@@ -19,13 +19,18 @@ y = 0.99 # discount factor
 pip_max = 375
 num_bar = 3
 num_actions = 2
+# Initial values
+piPip = 167
+oiPip = 167
+piBar = 0
+oiBar = 0
 # *********************************************
 
-def calc_reward(pPip, oPip, cubeValue):
+def calc_reward(pPip, oPip, cube):
     if pPip > oPip:
-        r = cubeValue
+        r = cube
     elif pPip < oPip:
-        r = -1 * cubeValue
+        r = -1 * cube
     else:
         r = 0
     return r
@@ -49,24 +54,31 @@ while 1:
             inputs = json.loads(request.decode())
             print("I received: ", inputs)
 
+            # Take action
+
             # Pull information out of received dictionary
             pPip = inputs['player_pip']
             oPip = inputs['opponent_pip']
             pBar = inputs['player_bar_count']
             oBar = inputs['opponent_bar_count']
             a = inputs['doubled']
-            cubeValue = inputs['cube_value']
+            cube = inputs['cube_value']
 
-            r = calc_reward(pPip, oPip, cubeValue)
-            r = calc_reward(pPip, oPip, cubeValue)
+            r = calc_reward(pPip, oPip, cube)
+            r = calc_reward(pPip, oPip, cube)
 
             Q = np.zeros([pip_max, pip_max, num_bar, num_bar, num_actions])
             #Q = np.zeros([pip_max, pip_max, num_bar, num_bar, num_actions])
             #Q[s, a] = Q[s,a] + learning_rate * (reward + discount_factor * np.max(Q[s1,:]) - Q[s,a])
 
             Q[pPip, oPip, pBar, oBar, a] = r
-            Q[pPip, oPip, pBar, oBar, a] = Q[pPip, oPip, pBar, oBar, a] + lr * (r + y *np.max(Q[pPip, oPip, pBar, oBar, :]) - Q[pPip, oPip, pBar, oBar, a])
-            print(Q[pPip, oPip, pBar, oBar, a])
+            #Q[piPip, oiPip, piBar, oiBar, a] = Q[piPip, oiPip, piBar, oiBar, a] + lr * (r + y *np.max(Q[piPip, oiPip, piBar, oiBar, :]) - Q[piPip, oiPip, piBar, oiBar, a])
+            #print(Q[pPip, oPip, pBar, oBar, a])
+
+            piPip = pPip
+            oiPip = oPip
+            piBar = pBar
+            oiBar = oBar
 
             rs = {'RsSuccess': True, 'Payload': 1}
         else:
@@ -85,7 +97,7 @@ while 1:
          That should reduce the state space somewhat but still capture key info.'''
 
 
-         #reward = calc_reward(pPip, oPip, doubling_cubeValue)
+         #reward = calc_reward(pPip, oPip, doubling_cube)
 
 
 
