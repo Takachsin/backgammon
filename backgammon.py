@@ -47,7 +47,6 @@ def Client_Send(data):
         print(ex)
 
 # ************Set Parameters*******************
-doubling_cube_values = [1, 2, 4, 8, 16, 32, 64]
 epochs = 1
 matchto = 7
 verbose = True
@@ -82,6 +81,19 @@ def calc_checkers_on_bar():
         oBar = oBarCount
     return pBar, oBar
 
+# Creates a single array to show checker positions on the board
+# Player checkers are positive and opponent checkers are negative
+def calc_board_diff():
+    board = gnubg.board()
+    pBoard = list(board[1][0:24])
+    oBoard = list(board[0][0:24])
+    pBar = board[1][24]
+    oBar = board[0][24]
+    dBoard = pBoard
+    for x in range(len(pBoard)):
+        dBoard[x] = pBoard[x] - oBoard[23 - x]
+    return dBoard, pBar, oBar
+
 # Determines if a player is bearing off based on the chip positions
 def determine_if_game_has_ended():
     board = gnubg.board()
@@ -112,6 +124,21 @@ def decide_on_double():
         double = False
     return double
 
+def build_NNdict():
+    pPip, oPip = calc_pip_count()
+    board, pBar, oBar = calc_board_diff()
+
+    # Build dictionary to send to the NN server
+    NNdict['board'] = board
+    NNdict['player_pip'] = pPip
+    NNdict['opponent_pip'] = oPip
+    NNdict['player_bar_count'] = pBar
+    NNdict['opponent_bar_count'] = oBar
+    NNdict['doubled'] = int(double)
+    NNdict['cube_value'] = cubeinfo['cube']
+    NNdict['cube_owner'] = cubeinfo['cubeowner']
+    return
+
 matches_won = 0
 
 for x in xrange(0, epochs):
@@ -134,7 +161,6 @@ for x in xrange(0, epochs):
 
             posinfo = gnubg.posinfo()
             cubeinfo = gnubg.cubeinfo()
-            board = gnubg.board()
             match = gnubg.match()
 
             #player_score = match['games'][-1]['info']['score-O']
@@ -148,6 +174,9 @@ for x in xrange(0, epochs):
             # Decides whether to accept the oppoent's double
             if opponent_doubled:
                 double = decide_on_double()
+                NNdict['pDoubled'] = 2
+                build_NNdict()
+                Query_NN(NNdict)
                 if double:
                     if verbose: print("Player accepts double.")
                     gnubg.command('accept')
@@ -167,6 +196,9 @@ for x in xrange(0, epochs):
             # Checks to make sure the player has not rolled yet
             elif die1 == 0 and die2 == 0:
                 # Decides whether player should double before rolling
+                NNdict['pDoubled'] = 1
+                build_NNdict()
+                Query_NN(NNdict)
                 if not opponent_has_cube:
                     double = decide_on_double()
                     if double:
@@ -176,21 +208,11 @@ for x in xrange(0, epochs):
                 gnubg.command('move ' + gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()), gnubg.board()))
                 #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
 
-            pPip, oPip = calc_pip_count()
-            pBar, oBar = calc_checkers_on_bar()
-            pBearOff, oBearOff = determine_bearing_off()
-
-            # Build dictionary to send to the NN server
-            NNdict['player_pip'] = pPip
-            NNdict['opponent_pip'] = oPip
-            NNdict['player_bar_count'] = pBar
-            NNdict['opponent_bar_count'] = oBar
-            NNdict['player_bearing_off'] = int(pBearOff)
-            NNdict['opponent_bearing_off'] = int(oBearOff)
-            NNdict['doubled'] = int(double)
-            NNdict['cube_value'] = cubeinfo['cube']
+            NNdict['pDoubled'] = 0
+            build_NNdict()
             Query_NN(NNdict)
         except Exception as ex:
+            print(ex)
             gnubg.updateui()
             gnubg.command("accept")
             if gnubg.match()['games'][-1]['info']['resigned'] == True:

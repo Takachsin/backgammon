@@ -20,10 +20,21 @@ pip_max = 375
 num_bar = 3
 num_actions = 2
 # Initial values
-piPip = 167
-oiPip = 167
-piBar = 0
-oiBar = 0
+Q = []
+pPip = 167
+oPip = 167
+board = [-2, 0, 0, 0, 0, 5, 0, 3, 0, 0, 0, -5, 5, 0, 0, 0 -3, 0, -5, 0, 0, 0, 0, 0]
+pBar = 0
+oBar = 0
+pDoubled = 0 # no one has doubled
+canDouble = 2 # either player can double
+
+# Create initial state list
+st = board
+st.append(pBar)
+st.append(oBar)
+st.append(pDoubled)
+st.append(canDouble)
 # *********************************************
 
 def calc_reward(pPip, oPip, cube):
@@ -35,8 +46,8 @@ def calc_reward(pPip, oPip, cube):
         r = 0
     return r
 
-def update_Q(pPip, oPip, pBar, oBar, a, r):
-    Q = Q[pPip, oPip, pBar, oBar, a] + lr * (r + y *np.max(Q[pPip, oPip, pBar, oBar, :]) - Q[pPip, oPip, pBar, oBar, a])
+def update_Q(pPip, oPip, a, r):
+    Q = Q[pPip, oPip, a] + lr * (r + y *np.max(Q[pPip, oPip, :]) - Q[pPip, oPip, a])
     return
 
 # Run the Loop. This is a server so we will just kill it violently if needed
@@ -54,33 +65,60 @@ while 1:
             inputs = json.loads(request.decode())
             print("I received: ", inputs)
 
-            # Take action
+            # Decide whether or not to take the action
+            #Qindex0 = Q.index([st, 0])
+            #Qindex1 = Q.index([st, 1])
+            #if Q[Qindex1] > Q[Qindex0]:
+            a = 1
+            rs = {'RsSuccess': True, 'Payload': 1}
+            #else:
+            #    a = 0
+            #    rs = {'RsSuccess': True, 'Payload': 0}
 
             # Pull information out of received dictionary
-            pPip = inputs['player_pip']
-            oPip = inputs['opponent_pip']
-            pBar = inputs['player_bar_count']
-            oBar = inputs['opponent_bar_count']
-            a = inputs['doubled']
+            nBoard = inputs['board']
+            npPip = inputs['player_pip']
+            noPip = inputs['opponent_pip']
+            npBar = inputs['player_bar_count']
+            noBar = inputs['opponent_bar_count']
+            #a = inputs['doubled']
             cube = inputs['cube_value']
+            cOwner = inputs['cube_owner']
+            npDoubled = inputs['pDoubled']
+
+            # canDouble = 0 for opponent, 1 for player, 2 for both
+            if cOwner == 1:
+                nCanDouble = 1
+            elif cOwner == 0:
+                nCanDouble = 0
+            else:
+                nCanDouble = 2
+
+            # Create state list
+            nSt = nBoard
+            nSt.append(npBar)
+            nSt.append(noBar)
+            nSt.append(npDoubled)
+            nSt.append(nCanDouble)
+
+            # Add the state, action index to the Q table if it does not exist
+            if not [st, a] in Q:
+                Q.append([st, a])
+                print("Appended")
+            Qindex = Q.index([st, a])
 
             r = calc_reward(pPip, oPip, cube)
-            r = calc_reward(pPip, oPip, cube)
+            Q[Qindex] = r
+            print(Q[Qindex])
 
-            Q = np.zeros([pip_max, pip_max, num_bar, num_bar, num_actions])
-            #Q = np.zeros([pip_max, pip_max, num_bar, num_bar, num_actions])
-            #Q[s, a] = Q[s,a] + learning_rate * (reward + discount_factor * np.max(Q[s1,:]) - Q[s,a])
-
-            Q[pPip, oPip, pBar, oBar, a] = r
-            #Q[piPip, oiPip, piBar, oiBar, a] = Q[piPip, oiPip, piBar, oiBar, a] + lr * (r + y *np.max(Q[piPip, oiPip, piBar, oiBar, :]) - Q[piPip, oiPip, piBar, oiBar, a])
+            #Q[pPip, oPip, a] = r
+            #Q[ipPip, ioPip, ipBar, ioBar, a] = Q[ipPip, ioPip, ipBar, ioBar, a] + lr * (r + y *np.max(Q[pPip, oPip, pBar, oBar, :]) - Q[ipPip, ioPip, ipBar, ioBar, a])
             #print(Q[pPip, oPip, pBar, oBar, a])
 
-            piPip = pPip
-            oiPip = oPip
-            piBar = pBar
-            oiBar = oBar
+            pPip = npPip
+            oPip = noPip
+            st = nSt
 
-            rs = {'RsSuccess': True, 'Payload': 1}
         else:
             rs = {'RsSuccess': False}
 
@@ -95,15 +133,6 @@ while 1:
         '''States can be the two pip counts plus which entries on the bar have
          two or more, exactly one, or zero of each color.
          That should reduce the state space somewhat but still capture key info.'''
-
-
-         #reward = calc_reward(pPip, oPip, doubling_cube)
-
-
-
-        # Example response
-
-
 
         # Convert our response to a json string
         strResponse = json.dumps(rs)
