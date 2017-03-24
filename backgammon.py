@@ -177,7 +177,7 @@ for x in xrange(0, epochs):
 
             # Decides whether to accept the oppoent's double
             if opponent_doubled:
-                NNdict['double'] = 2
+                NNdict['double'] = 0
                 build_NNdict()
                 accept = Query_NN(NNdict)
                 if accept:
@@ -210,10 +210,6 @@ for x in xrange(0, epochs):
             else:
                 gnubg.command('move ' + gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()), gnubg.board()))
                 #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
-
-            NNdict['double'] = 0
-            build_NNdict()
-            Query_NN(NNdict)
         except Exception as ex:
             print(ex)
             gnubg.updateui()
