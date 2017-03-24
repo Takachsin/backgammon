@@ -12,7 +12,7 @@ def Train_NN(xs, ys):
 def Query_NN(xs):
     "Call the NN to determine an action"
     response = Client_Send(xs)
-    return response['RsSuccess']
+    return response['Payload']
 
 def Client_Send(data):
     "Send Data to NN Server"
@@ -47,7 +47,7 @@ def Client_Send(data):
         print(ex)
 
 # ************Set Parameters*******************
-epochs = 1
+epochs = 100
 matchto = 7
 verbose = True
 # *********************************************
@@ -125,6 +125,7 @@ def decide_on_double():
     return double
 
 def build_NNdict():
+    evaluate = gnubg.evaluate()
     pPip, oPip = calc_pip_count()
     board, pBar, oBar = calc_board_diff()
 
@@ -134,11 +135,12 @@ def build_NNdict():
     NNdict['opponent_pip'] = oPip
     NNdict['player_bar_count'] = pBar
     NNdict['opponent_bar_count'] = oBar
-    NNdict['doubled'] = int(double)
     NNdict['cube_value'] = cubeinfo['cube']
     NNdict['cube_owner'] = cubeinfo['cubeowner']
+    NNdict['player_wins_prob'] = evaluate[0]
     return
 
+gnubg.command('set automatic game off')
 matches_won = 0
 
 for x in xrange(0, epochs):
@@ -150,6 +152,10 @@ for x in xrange(0, epochs):
     pWins = False
     oWins = False
     NNdict = {}
+    NNdict['game_over'] = False
+    NNdict['player_wins'] = False
+    NNdict['epochs'] = epochs
+    NNdict['current_epochs'] = x
 
     while not pWins and not oWins:
         try:
@@ -163,8 +169,6 @@ for x in xrange(0, epochs):
             cubeinfo = gnubg.cubeinfo()
             match = gnubg.match()
 
-            #player_score = match['games'][-1]['info']['score-O']
-            #opponent_score = match['games'][-1]['info']['score-X']
             opponent_doubled = posinfo['doubled']
             opponent_resigns = posinfo['resigned']
             opponent_has_cube = cubeinfo['cubeowner'] == 0
@@ -173,11 +177,10 @@ for x in xrange(0, epochs):
 
             # Decides whether to accept the oppoent's double
             if opponent_doubled:
-                double = decide_on_double()
-                NNdict['pDoubled'] = 2
+                NNdict['double'] = 2
                 build_NNdict()
-                Query_NN(NNdict)
-                if double:
+                accept = Query_NN(NNdict)
+                if accept:
                     if verbose: print("Player accepts double.")
                     gnubg.command('accept')
                 else:
@@ -195,12 +198,12 @@ for x in xrange(0, epochs):
                 break
             # Checks to make sure the player has not rolled yet
             elif die1 == 0 and die2 == 0:
-                # Decides whether player should double before rolling
-                NNdict['pDoubled'] = 1
-                build_NNdict()
-                Query_NN(NNdict)
                 if not opponent_has_cube:
-                    double = decide_on_double()
+                    # Decides whether player should double before rolling
+                    NNdict['double'] = 1
+                    build_NNdict()
+                    double = Query_NN(NNdict)
+                    print(double)
                     if double:
                         gnubg.command('double')
                 gnubg.command('roll')
@@ -208,7 +211,7 @@ for x in xrange(0, epochs):
                 gnubg.command('move ' + gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()), gnubg.board()))
                 #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
 
-            NNdict['pDoubled'] = 0
+            NNdict['double'] = 0
             build_NNdict()
             Query_NN(NNdict)
         except Exception as ex:
@@ -224,9 +227,12 @@ for x in xrange(0, epochs):
     if pWins:
         if verbose: print("Player has won the game!")
         matches_won += 1
-        #reward = 1 * (doubling_cube_value + 1000)
     else:
         if verbose: print("Opponent has won the game!")
-        #reward = -1 * (doubling_cube_value + 1000)
+
+    build_NNdict()
+    NNdict['game_over'] = True
+    NNdict['player_wins'] = pWins
+    Query_NN(NNdict)
 
 print("Player won " + str(matches_won) + " of " + str(epochs) + " matches")

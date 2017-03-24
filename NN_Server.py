@@ -3,6 +3,7 @@ import socket
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 # vvv - Socket Magic -------------
 TCP_IP = '127.0.0.1'
@@ -16,25 +17,37 @@ s.listen(1)
 # ************Set Parameters*******************
 lr = 0.85 # learning rate
 y = 0.99 # discount factor
-pip_max = 375
-num_bar = 3
-num_actions = 2
+verbose = True
+
 # Initial values
-Q = []
+Q = [] # stores the state / action pairs
+rL = [] # stores the Q list rewards
 pPip = 167
 oPip = 167
 board = [-2, 0, 0, 0, 0, 5, 0, 3, 0, 0, 0, -5, 5, 0, 0, 0 -3, 0, -5, 0, 0, 0, 0, 0]
 pBar = 0
 oBar = 0
-pDoubled = 0 # no one has doubled
-canDouble = 2 # either player can double
+double = 0 # no one has doubled
+ncOwner = -1
 
 # Create initial state list
 st = board
 st.append(pBar)
 st.append(oBar)
-st.append(pDoubled)
-st.append(canDouble)
+st.append(double)
+st.append(ncOwner)
+
+iSt = st
+ipPip = pPip
+ioPip = oPip
+
+# Add the two initial pairs to the Q and reward lists
+Q.append([st, 0])
+Qindex0 = Q.index([st, 0])
+rL.append(0)
+Q.append([st, 1])
+Qindex1 = Q.index([st, 1])
+rL.append(0)
 # *********************************************
 
 def calc_reward(pPip, oPip, cube):
@@ -45,10 +58,6 @@ def calc_reward(pPip, oPip, cube):
     else:
         r = 0
     return r
-
-def update_Q(pPip, oPip, a, r):
-    Q = Q[pPip, oPip, a] + lr * (r + y *np.max(Q[pPip, oPip, :]) - Q[pPip, oPip, a])
-    return
 
 # Run the Loop. This is a server so we will just kill it violently if needed
 while 1:
@@ -63,17 +72,7 @@ while 1:
         # If the incoming request isn't null, convert it to our Dict
         if request != None:
             inputs = json.loads(request.decode())
-            print("I received: ", inputs)
-
-            # Decide whether or not to take the action
-            #Qindex0 = Q.index([st, 0])
-            #Qindex1 = Q.index([st, 1])
-            #if Q[Qindex1] > Q[Qindex0]:
-            a = 1
-            rs = {'RsSuccess': True, 'Payload': 1}
-            #else:
-            #    a = 0
-            #    rs = {'RsSuccess': True, 'Payload': 0}
+            if verbose: print("I received: ", inputs)
 
             # Pull information out of received dictionary
             nBoard = inputs['board']
@@ -81,58 +80,99 @@ while 1:
             noPip = inputs['opponent_pip']
             npBar = inputs['player_bar_count']
             noBar = inputs['opponent_bar_count']
-            #a = inputs['doubled']
             cube = inputs['cube_value']
-            cOwner = inputs['cube_owner']
-            npDoubled = inputs['pDoubled']
+            ncOwner = inputs['cube_owner']
+            nDouble = inputs['double']
+            winProb = inputs['player_wins_prob']
+            gameOver = inputs['game_over']
+            pWins = inputs['player_wins']
+            epochs = inputs['epochs']
+            cEpochs = inputs['current_epochs']
 
-            # canDouble = 0 for opponent, 1 for player, 2 for both
-            if cOwner == 1:
-                nCanDouble = 1
-            elif cOwner == 0:
-                nCanDouble = 0
+            if not gameOver:
+                # Decide whether or not to take the action
+                Qindex0 = Q.index([st, 0])
+                Qindex1 = Q.index([st, 1])
+
+                if verbose: print("Current state reward (no double): " + str(rL[Qindex0]))
+                if verbose: print("Current state reward (double): " + str(rL[Qindex1]))
+
+                # Random exploration, decreases over time
+                diffEpochs = cEpochs + 1 / epochs
+                if random.random() > diffEpochs:
+                    if random.random() > 0.5:
+                        Qindex = Qindex1
+                        if verbose: print("Random action: Double!")
+                        rs = {'RsSuccess': True, 'Payload': True}
+                    else:
+                        Qindex = Qindex0
+                        if verbose: print("Random action: Don't Double!")
+                        rs = {'RsSuccess': True, 'Payload': False}
+                else:
+                    if rL[Qindex1] > rL[Qindex0]:
+                        Qindex = Qindex1
+                        if verbose: print("Q-Table action: Double!")
+                        rs = {'RsSuccess': True, 'Payload': True}
+                    else:
+                        Qindex = Qindex0
+                        if verbose: print("Q-Table action: Don't Double!")
+                        rs = {'RsSuccess': True, 'Payload': False}
+
+                # Create state list
+                nSt = nBoard
+                nSt.append(npBar)
+                nSt.append(noBar)
+                nSt.append(nDouble)
+                nSt.append(ncOwner)
+
+                # Add the next states to the Q and reward list if they don't exist
+                # Sets the index values for the two possible actions
+                if not [nSt, 0] in Q:
+                    Q.append([nSt, 0])
+                    rL.append(0)
+                nQindex0 = Q.index([nSt, 0])
+
+                if not [nSt, 1] in Q:
+                    Q.append([nSt, 1])
+                    rL.append(0)
+                nQindex1 = Q.index([nSt, 1])
+
+                #---- TQL ----#
+                # Determine max of next action
+                if rL[nQindex0] >= rL[nQindex1]:
+                    nQindex = nQindex0
+                else:
+                    nQindex = nQindex1
+                #-------------#
+
+                r = calc_reward(pPip, oPip, cube)
+                if verbose: print("Calculated reward: " + str(r))
+
+                rL[Qindex] = rL[Qindex] + lr * (r + y * rL[nQindex] - rL[Qindex])
+                if verbose: print("Learned reward: " + str(rL[Qindex]))
+
+                pPip = npPip
+                oPip = noPip
+                st = nSt
             else:
-                nCanDouble = 2
+                if verbose: print("Game has ended!")
+                Qindex = nQindex
+                r = calc_reward(pPip, oPip, cube)
+                if pWins:
+                    if verbose: print("Player has won!")
+                    nR = cube + 1000
+                else:
+                    if verbose: print("Player has lost...")
+                    nR = -1 * (cube + 1000)
 
-            # Create state list
-            nSt = nBoard
-            nSt.append(npBar)
-            nSt.append(noBar)
-            nSt.append(npDoubled)
-            nSt.append(nCanDouble)
+                rL[Qindex] = rL[Qindex] + lr * (r + y * nR - rL[Qindex])
+                if verbose: print("Match reward is " + str(rL[Qindex]))
 
-            # Add the state, action index to the Q table if it does not exist
-            if not [st, a] in Q:
-                Q.append([st, a])
-                print("Appended")
-            Qindex = Q.index([st, a])
-
-            r = calc_reward(pPip, oPip, cube)
-            Q[Qindex] = r
-            print(Q[Qindex])
-
-            #Q[pPip, oPip, a] = r
-            #Q[ipPip, ioPip, ipBar, ioBar, a] = Q[ipPip, ioPip, ipBar, ioBar, a] + lr * (r + y *np.max(Q[pPip, oPip, pBar, oBar, :]) - Q[ipPip, ioPip, ipBar, ioBar, a])
-            #print(Q[pPip, oPip, pBar, oBar, a])
-
-            pPip = npPip
-            oPip = noPip
-            st = nSt
-
+                pPip = ipPip
+                oPip = ioPip
+                st = iSt
         else:
             rs = {'RsSuccess': False}
-
-        # "Inputs" in this case, is your raw request object. You may either send
-        # exactly what the server needs or format your request a bit. I would suggest
-        # sending a dictionary that contains a string (train || query) and then the
-        # payload of a Dict with all your inputs. Run this request through the NN
-        # and then formulate a response based on your NN's findings.
-
-        # action are double or don't double
-        # states are iterations
-        '''States can be the two pip counts plus which entries on the bar have
-         two or more, exactly one, or zero of each color.
-         That should reduce the state space somewhat but still capture key info.'''
 
         # Convert our response to a json string
         strResponse = json.dumps(rs)
