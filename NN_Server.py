@@ -17,7 +17,9 @@ s.listen(1)
 # ************Set Parameters*******************
 lr = 0.85 # learning rate
 y = 0.99 # discount factor
+nh = 6 # number of hidden layers
 verbose = True
+mode = 'TQL' # TQL or DQL
 
 # Initial values
 Q = [] # stores the state / action pairs
@@ -59,6 +61,9 @@ def calc_reward(pPip, oPip, cube):
         r = 0
     return r
 
+def sigmoid(z):
+    return 1.0/(1.0+np.exp(-z))
+
 # Run the Loop. This is a server so we will just kill it violently if needed
 while 1:
     try:
@@ -88,9 +93,12 @@ while 1:
             pWins = inputs['player_wins']
             epochs = inputs['epochs']
             cEpochs = inputs['current_epochs']
+            pBearOff = inputs['player_bearing_off']
+            oBearOff = inputs['opponent_bearing_off']
 
             if not gameOver:
-                # Decide whether or not to take the action
+                #if mode == 'TQL':
+                # Lookup table values for doubling action
                 Qindex0 = Q.index([st, 0])
                 Qindex1 = Q.index([st, 1])
 
@@ -98,7 +106,7 @@ while 1:
                 if verbose: print("Current state reward (double): " + str(rL[Qindex1]))
 
                 # Random exploration, decreases over time
-                diffEpochs = cEpochs + 1 / epochs
+                diffEpochs = (cEpochs + 1) / epochs
                 if random.random() > diffEpochs:
                     if random.random() > 0.5:
                         Qindex = Qindex1
@@ -109,7 +117,15 @@ while 1:
                         if verbose: print("Random action: Don't Double!")
                         rs = {'RsSuccess': True, 'Payload': False}
                 else:
-                    if rL[Qindex1] > rL[Qindex0]:
+                    if pBearOff == True:
+                        pW = 2
+                    else:
+                        pW = 1
+                    if oBearOff == True:
+                        oW = 2
+                    else:
+                        oW = 1
+                    if (rL[Qindex1] * pW) > (rL[Qindex0] * oW):
                         Qindex = Qindex1
                         if verbose: print("Q-Table action: Double!")
                         rs = {'RsSuccess': True, 'Payload': True}
@@ -154,6 +170,7 @@ while 1:
                 pPip = npPip
                 oPip = noPip
                 st = nSt
+
             else:
                 if verbose: print("Game has ended!")
                 Qindex = nQindex
@@ -167,6 +184,12 @@ while 1:
 
                 rL[Qindex] = rL[Qindex] + lr * (r + y * nR - rL[Qindex])
                 if verbose: print("Match reward is " + str(rL[Qindex]))
+
+                if (cEpochs + 1) == epochs:
+                    plt.plot(rL)
+                    plt.xlabel('State-Action Q-Table Index')
+                    plt.ylabel('Reward')
+                    plt.show()
 
                 pPip = ipPip
                 oPip = ioPip
@@ -185,21 +208,3 @@ while 1:
         conn.close()
     except Exception as ex:
         print(ex)
-
-
-#toString
-#s=json.dumps(variables)
-
-#toDict
-#variables2=json.loads(s)
-
-##import tensorflow as tf
-#hello = tf.constant('Hello, TensorFlow!')
-#sess = tf.Session()
-#print(sess.run(hello))
-
-#x = tf.placeholder(tf.float32, [None, 784])
-#W = tf.Variable(tf.zeros([784, 10]))
-#b = tf.Variable(tf.zeros([10]))
-
-#y = tf.nn.softmax(tf.matmul(x, W) + b)

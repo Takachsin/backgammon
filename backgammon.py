@@ -47,7 +47,7 @@ def Client_Send(data):
         print(ex)
 
 # ************Set Parameters*******************
-epochs = 100
+epochs = 5
 matchto = 7
 verbose = True
 # *********************************************
@@ -128,6 +128,7 @@ def build_NNdict():
     evaluate = gnubg.evaluate()
     pPip, oPip = calc_pip_count()
     board, pBar, oBar = calc_board_diff()
+    pBearOff, oBearOff = determine_bearing_off()
 
     # Build dictionary to send to the NN server
     NNdict['board'] = board
@@ -138,6 +139,8 @@ def build_NNdict():
     NNdict['cube_value'] = cubeinfo['cube']
     NNdict['cube_owner'] = cubeinfo['cubeowner']
     NNdict['player_wins_prob'] = evaluate[0]
+    NNdict['player_bearing_off'] = pBearOff
+    NNdict['opponent_bearing_off'] = oBearOff
     return
 
 gnubg.command('set automatic game off')
@@ -203,13 +206,13 @@ for x in xrange(0, epochs):
                     NNdict['double'] = 1
                     build_NNdict()
                     double = Query_NN(NNdict)
-                    print(double)
                     if double:
                         gnubg.command('double')
                 gnubg.command('roll')
             else:
                 gnubg.command('move ' + gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()), gnubg.board()))
                 #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
+
         except Exception as ex:
             print(ex)
             gnubg.updateui()
