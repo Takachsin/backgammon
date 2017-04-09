@@ -47,7 +47,7 @@ def Client_Send(data):
         print(ex)
 
 # ************Set Parameters*******************
-epochs = 5
+epochs = 100
 matchto = 7
 verbose = True
 # *********************************************
@@ -172,6 +172,14 @@ for x in xrange(0, epochs):
             cubeinfo = gnubg.cubeinfo()
             match = gnubg.match()
 
+            winner = match['games'][-1]['info']['winner']
+            if winner == 'O':
+                pWins = True
+                oWins = False
+                if verbose: print("Catch for if opponent rejected double.")
+                print("I survived.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                break
+
             opponent_doubled = posinfo['doubled']
             opponent_resigns = posinfo['resigned']
             opponent_has_cube = cubeinfo['cubeowner'] == 0
@@ -202,6 +210,12 @@ for x in xrange(0, epochs):
             # Checks to make sure the player has not rolled yet
             elif die1 == 0 and die2 == 0:
                 if not opponent_has_cube:
+                    if verbose: print("Deciding on double...")
+                    board = gnubg.board()
+                    oBoard, pBoard = board
+                    print(pBoard)
+                    print(oBoard)
+
                     # Decides whether player should double before rolling
                     NNdict['double'] = 1
                     build_NNdict()
@@ -210,6 +224,7 @@ for x in xrange(0, epochs):
                         gnubg.command('double')
                 gnubg.command('roll')
             else:
+                if verbose: print("Roll")
                 gnubg.command('move ' + gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()), gnubg.board()))
                 #gnubg.command(gnubg.movetupletostring(gnubg.findbestmove(gnubg.board(), gnubg.cubeinfo()),gnubg.board()))
 
@@ -217,11 +232,12 @@ for x in xrange(0, epochs):
             print(ex)
             gnubg.updateui()
             gnubg.command("accept")
-            if gnubg.match()['games'][-1]['info']['resigned'] == True:
+            print("I hit the exception")
+            if gnubg.match()['games'][-1]['info']['resigned'] == True and pWins == False and oWins == False:
                 if verbose: print("Opponent resigns!")
                 pWins = True
                 oWins = False
-                gnubg.command('accept')
+                break
 
     if pWins:
         if verbose: print("Player has won the game!")
