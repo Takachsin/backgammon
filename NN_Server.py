@@ -4,6 +4,8 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import csv
+import pandas
 
 # vvv - Socket Magic -------------
 TCP_IP = '127.0.0.1'
@@ -22,8 +24,6 @@ verbose = True
 mode = 'TQL' # TQL or DQL
 
 # Initial values
-Q = [] # stores the state / action pairs
-rL = [] # stores the Q list rewards
 pPip = 167
 oPip = 167
 board = [-2, 0, 0, 0, 0, 5, 0, 3, 0, 0, 0, -5, 5, 0, 0, 0 -3, 0, -5, 0, 0, 0, 0, 0]
@@ -33,6 +33,9 @@ double = 0 # no one has doubled
 ncOwner = -1
 
 # Create initial state list
+Q = [] # stores the state / action pairs
+rL = [] # stores the Q list rewards
+
 st = board
 st.append(pBar)
 st.append(oBar)
@@ -43,13 +46,42 @@ iSt = st
 ipPip = pPip
 ioPip = oPip
 
+# Import data from CSV file
+data = pandas.read_csv('Q.csv')
+Q = data.Qsa.tolist()
+rL = data.Reward.tolist()
+
+'''with open('Q.csv', 'r') as f:
+    reader = csv.reader(f)
+    for row in reader:
+        Q.append(row)
+        #rL.append(row[2])'''
+
+print(Q)
+print(rL)
+
 # Add the two initial pairs to the Q and reward lists
+if not [st, 0] in Q:
+    print("Brand new")
+    Q.append([st, 0])
+    rL.append(0)
+Qindex0 = Q.index([st, 0])
+
+if not [st, 1] in Q:
+    Q.append([st, 1])
+    rL.append(0)
+Qindex1 = Q.index([st, 1])
+
+print(Q)
+
+
+'''
 Q.append([st, 0])
 Qindex0 = Q.index([st, 0])
 rL.append(0)
 Q.append([st, 1])
 Qindex1 = Q.index([st, 1])
-rL.append(0)
+rL.append(0)'''
 # *********************************************
 
 def calc_reward(pPip, oPip, cube):
@@ -190,6 +222,13 @@ while 1:
                     plt.xlabel('State-Action Q-Table Index')
                     plt.ylabel('Reward')
                     plt.show()
+
+                    '''with open('Q.csv', 'w') as f:
+                        wr = csv.writer(f)
+                        wr.writerows(zip(Q, rL))'''
+                    df = pandas.DataFrame({"Qsa": Q, "Reward": rL})
+                    #df = pandas.DataFrame(Q)
+                    df.to_csv('Q.csv')
 
                 pPip = ipPip
                 oPip = ioPip
