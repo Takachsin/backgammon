@@ -47,7 +47,7 @@ def Client_Send(data):
         print(ex)
 
 # ************Set Parameters*******************
-epochs = 100
+epochs = 50
 matchto = 7
 verbose = True
 # *********************************************
@@ -177,7 +177,6 @@ for x in xrange(0, epochs):
                 pWins = True
                 oWins = False
                 if verbose: print("Catch for if opponent rejected double.")
-                print("I survived.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 break
 
             opponent_doubled = posinfo['doubled']
@@ -211,10 +210,6 @@ for x in xrange(0, epochs):
             elif die1 == 0 and die2 == 0:
                 if not opponent_has_cube:
                     if verbose: print("Deciding on double...")
-                    board = gnubg.board()
-                    oBoard, pBoard = board
-                    print(pBoard)
-                    print(oBoard)
 
                     # Decides whether player should double before rolling
                     NNdict['double'] = 1

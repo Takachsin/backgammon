@@ -46,19 +46,16 @@ iSt = st
 ipPip = pPip
 ioPip = oPip
 
-# Import data from CSV file
-data = pandas.read_csv('Q.csv')
-Q = data.Qsa.tolist()
-rL = data.Reward.tolist()
-
-'''with open('Q.csv', 'r') as f:
-    reader = csv.reader(f)
-    for row in reader:
-        Q.append(row)
-        #rL.append(row[2])'''
-
-print(Q)
-print(rL)
+# Import data from text file
+try:
+    with open('q.txt') as qf:
+        Q = json.load(qf)
+    with open('rL.txt') as rLf:
+        rL = json.load(rLf)
+except Exception:
+    print("File does not exist or data is corrupt, starting fresh.")
+    Q = []
+    rL = []
 
 # Add the two initial pairs to the Q and reward lists
 if not [st, 0] in Q:
@@ -71,17 +68,6 @@ if not [st, 1] in Q:
     Q.append([st, 1])
     rL.append(0)
 Qindex1 = Q.index([st, 1])
-
-print(Q)
-
-
-'''
-Q.append([st, 0])
-Qindex0 = Q.index([st, 0])
-rL.append(0)
-Q.append([st, 1])
-Qindex1 = Q.index([st, 1])
-rL.append(0)'''
 # *********************************************
 
 def calc_reward(pPip, oPip, cube):
@@ -218,17 +204,18 @@ while 1:
                 if verbose: print("Match reward is " + str(rL[Qindex]))
 
                 if (cEpochs + 1) == epochs:
-                    plt.plot(rL)
-                    plt.xlabel('State-Action Q-Table Index')
-                    plt.ylabel('Reward')
-                    plt.show()
+                    #plt.plot(rL)
+                    #plt.xlabel('State-Action Q-Table Index')
+                    #plt.ylabel('Reward')
+                    #plt.show()
 
-                    '''with open('Q.csv', 'w') as f:
-                        wr = csv.writer(f)
-                        wr.writerows(zip(Q, rL))'''
-                    df = pandas.DataFrame({"Qsa": Q, "Reward": rL})
-                    #df = pandas.DataFrame(Q)
+                    df = pandas.DataFrame({"Q-State-Action": Q, "Reward": rL})
                     df.to_csv('Q.csv')
+
+                    with open('q.txt', 'w') as qFile:
+                        json.dump(Q, qFile)
+                    with open('rL.txt', 'w') as rLFile:
+                        json.dump(rL, rLFile)
 
                 pPip = ipPip
                 oPip = ioPip
